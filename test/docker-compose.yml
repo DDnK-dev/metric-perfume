@@ -1,0 +1,64 @@
+version: '3.7'
+services:
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+    - 8080:8080
+    privileged: true
+    devices:
+    - /dev/kmsg
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:ro
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    - /dev/disk/:/dev/disk:ro
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--web.listen-address=0.0.0.0:9099'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - /data/metric-perfume/prometheus:/etc/prometheus
+      - /data/metric-perfume/prometheus/data:/prometheus
+    ports:
+      - 9099:9099
+    networks:
+      - prometheus-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - /data/metric-perfume/grafana/data:/var/lib/grafana
+      - /data/metric-perfume/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - 9900:3000
+    depends_on:
+      - prometheus
+    networks:
+      - prometheus-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+networks:
+  prometheus-network:
