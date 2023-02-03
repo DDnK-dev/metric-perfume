@@ -5,6 +5,9 @@
 *.so
 *.dylib
 
+# VSCode
+.devcontainer/
+
 # Test binary, built with `go test -c`
 *.test
 
